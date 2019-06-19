@@ -4,6 +4,7 @@ from kivy.uix.label import Label
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.textinput import TextInput
 from kivy.uix.button import Button
+from kivy.uix.screenmanager import ScreenManager, Screen
 import os
 
 # For dev purposes, require kivy 1.10.1
@@ -50,20 +51,53 @@ class ConnectPage(GridLayout):
         self.add_widget(Label())    # Empty label
         self.add_widget(self.join)
 
+    # Perform operation after button is pressed
     def join_button(self, instance):
         port = self.port.text
         ip = self.ip.text
         username = self.username.text
 
-        print(f"Attempting to join {ip}:{port} as {username}")
-
         with open("prev_details.txt","w") as f:
             f.write(f"{ip},{port},{username}")
+
+        info = f"Attempting to join {ip}:{port} as {username}"
+        chatApp.info_page.update_info(info)
+
+        chatApp.screen_manager.current = "Info"
+
+class InfoPage(GridLayout):
+    def __init__(self,**kwargs):
+        # Run __init__ of GridLayout
+        super().__init__(**kwargs)
+        self.cols = 1               # We'll have one columns
+        self.message = Label(halign="center", valign="middle", font_size=30)
+        self.message.bind(width=self.update_text_width)
+        self.add_widget(self.message)
+
+    def update_info(self, message):
+        self.message.text = message
+
+    # Cover 90% of screen size
+    def update_text_width(self, *_):
+        self.message.text_size = (self.message.width*0.9, None)
 
 class ChatApp(App):
     # On build print Oola
     def build(self):
-        return ConnectPage()
+        self.screen_manager = ScreenManager()
+
+        self.connect_page = ConnectPage()
+        screen = Screen(name="Connect")
+        screen.add_widget(self.connect_page)
+        self.screen_manager.add_widget(screen)
+
+        self.info_page = InfoPage()
+        screen = Screen(name="Info")
+        screen.add_widget(self.info_page)
+        self.screen_manager.add_widget(screen)
+
+        return self.screen_manager
 
 if __name__ == '__main__':
-    ChatApp().run()
+    chatApp = ChatApp()
+    chatApp.run()
