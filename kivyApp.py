@@ -5,10 +5,21 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.textinput import TextInput
 from kivy.uix.button import Button
 from kivy.uix.screenmanager import ScreenManager, Screen
+from kivy.clock import Clock
+import socket_client
 import os
+import sys
 
 # For dev purposes, require kivy 1.10.1
 kivy.require("1.10.1")
+
+# Chat page after connection is established
+class ChatPage(GridLayout):
+    def __init__(self,**kwargs):
+        # Run __init__ of GridLayout
+        super().__init__(**kwargs)
+        self.cols = 1               # We'll have two columns
+        self.add_widget(Label(text="It works!"))
 
 # ConnectPage inherits from GridLayout
 class ConnectPage(GridLayout):
@@ -61,9 +72,23 @@ class ConnectPage(GridLayout):
             f.write(f"{ip},{port},{username}")
 
         info = f"Attempting to join {ip}:{port} as {username}"
-        chatApp.info_page.update_info(info)
+        chat_app.info_page.update_info(info)
 
-        chatApp.screen_manager.current = "Info"
+        chat_app.screen_manager.current = "Info"
+
+        Clock.schedule_once(self.connect, 1)
+
+    # Connect to the server and create chat page
+    def connect(self, _):
+        port = int(self.port.text)
+        ip = self.ip.text
+        username = self.username.text
+
+        if not socket_client.connect(ip, port, username, show_error):
+            return
+
+        chat_app.create_chat_page()
+        chat_app.screen_manager.current = "Chat"
 
 class InfoPage(GridLayout):
     def __init__(self,**kwargs):
@@ -98,6 +123,22 @@ class ChatApp(App):
 
         return self.screen_manager
 
+    """
+    This needs to be a seperate function.
+    Why? Because it should be created after connection is established
+    """
+    def create_chat_page(self):
+        self.chat_page = ChatPage()
+        screen = Screen(name="Chat")
+        screen.add_widget(self.chat_page)
+        self.screen_manager.add_widget(screen)
+
+# If something goes wrong, so error on info page
+def show_error(message):
+    chat_app.info_page.update_info(message)
+    chat_app.screen_manager.current = "Info"
+    Clock.schedule_once(sys.exit, 10)
+
 if __name__ == '__main__':
-    chatApp = ChatApp()
-    chatApp.run()
+    chat_app = ChatApp()
+    chat_app.run()
